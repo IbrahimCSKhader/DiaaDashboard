@@ -65,125 +65,104 @@ async function loadSpecializations() {
     tbody.appendChild(row);
   });
 }
-
+// ==================== Load Summaries ====================
 async function loadSummaries() {
   const summaries = await window.api.getAllSummaries();
-  console.log('loadSummaries - received', summaries?.length, 'summaries');
-  const tbody = summariesTable.querySelector("tbody");
+
+  console.log("loadSummaries - received:", summaries.length, "summaries");
+
+  const tbody = document.querySelector("#summariesTable tbody");
   tbody.innerHTML = "";
 
   summaries.forEach((summary) => {
+    // ✅ التعامل مع كل أنواع الـ naming (camelCase / PascalCase)
+    const id = summary.id ?? summary.Id;
+    const name = summary.name ?? summary.Name ?? "N/A";
+    const specializationName =
+      summary.specializationName ??
+      summary.SpecializationName ??
+      summary.specialization?.name ??
+      summary.Specialization?.Name ??
+      "N/A";
+
     const row = document.createElement("tr");
     row.innerHTML = `
-            <td>${summary.id}</td>
-            <td><a href="#" onclick="viewSummary(${
-              summary.id
-            });return false;">${summary.name}</a></td>
-            <td>${summary.specialization?.name || "N/A"}</td>
-            <td>
-                <button class="btn btn-danger btn-sm" onclick="deleteSummaryById(${
-                  summary.id
-                })">
-                    Delete
-                </button>
-            </td>
-        `;
+      <td>${id}</td>
+      <td>
+        <a href="#" onclick="viewSummary(${id}); return false;">${name}</a>
+      </td>
+      <td>${specializationName}</td>
+      <td>
+        <button class="btn btn-sm btn-outline-danger" onclick="deleteSummaryById(${id})">
+          Delete
+        </button>
+        <button class="btn btn-sm btn-outline-primary" onclick="downloadSummaryFile(${id})">
+          Download
+        </button>
+      </td>
+    `;
     tbody.appendChild(row);
   });
 
-  // Update specialization dropdown
   await updateSpecializationSelect();
 }
 
-// View summary PDF in modal
+// ======================= VIEW PDF =======================
 let currentPdfUrl = null;
+
 async function viewSummary(id) {
   try {
-    const data = await window.api.getSummaryById(id);
+    const data = await api.getSummaryById(id);
     if (!data) {
       alert("Summary not found");
       return;
     }
 
-    // determine where the file bytes are
-    let blob = null;
-    // common field names: file, fileBase64, fileContent
-    if (data.file) {
-      if (typeof data.file === "string") {
-        // assume base64
-        const b64 = data.file.replace(/\r|\n/g, "");
-        const binary = atob(b64);
-        const len = binary.length;
-        const u8 = new Uint8Array(len);
-        for (let i = 0; i < len; i++) u8[i] = binary.charCodeAt(i);
-        blob = new Blob([u8], { type: "application/pdf" });
-      } else if (Array.isArray(data.file)) {
-        const u8 = new Uint8Array(data.file);
-        blob = new Blob([u8], { type: "application/pdf" });
-      }
-    } else if (data.fileBase64) {
-      const b64 = data.fileBase64.replace(/\r|\n/g, "");
-      const binary = atob(b64);
-      const len = binary.length;
-      const u8 = new Uint8Array(len);
-      for (let i = 0; i < len; i++) u8[i] = binary.charCodeAt(i);
-      blob = new Blob([u8], { type: "application/pdf" });
-    } else if (data.fileContent) {
-      // try string
-      if (typeof data.fileContent === "string") {
-        const b64 = data.fileContent.replace(/\r|\n/g, "");
-        const binary = atob(b64);
-        const len = binary.length;
-        const u8 = new Uint8Array(len);
-        for (let i = 0; i < len; i++) u8[i] = binary.charCodeAt(i);
-        blob = new Blob([u8], { type: "application/pdf" });
-      } else if (Array.isArray(data.fileContent)) {
-        const u8 = new Uint8Array(data.fileContent);
-        blob = new Blob([u8], { type: "application/pdf" });
-      }
-    }
+    // حدد الحقل اللي فيه الـ Base64
+    const fileBase64 =
+      data.fileBase64 ?? data.FileBase64 ?? data.file ?? data.File;
 
-    // If backend returns a direct file URL
-    let url = null;
-    if (blob) {
-      url = URL.createObjectURL(blob);
-      currentPdfUrl = url;
-    } else if (data.fileUrl || data.url) {
-      url = data.fileUrl || data.url;
-    } else {
-      alert("No file available for this summary");
+    if (!fileBase64) {
+      alert("No file available for this summary.");
       return;
     }
 
+    // فك التشفير وحول الملف لـ Blob
+    const binary = atob(fileBase64.replace(/\r|\n/g, ""));
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+
+    const blob = new Blob([bytes], { type: "application/pdf" });
+    const url = URL.createObjectURL(blob);
+    currentPdfUrl = url;
+
+    // عرض الملف داخل iframe
     const iframe = document.getElementById("pdfFrame");
-    // append common viewer params to try to hide toolbar
-    const viewerParams = "#toolbar=0&navpanes=0&view=FitH";
-    iframe.src = url + viewerParams;
+    iframe.src = url + "#toolbar=0&navpanes=0";
 
-    // prevent right-click on overlay and iframe area
-    const overlay = document.getElementById("pdfOverlay");
-    overlay.addEventListener("contextmenu", (e) => e.preventDefault());
-
-    // show modal
-    const modalEl = document.getElementById("viewPdfModal");
-    const modal = new bootstrap.Modal(modalEl);
+    // إظهار المودال
+    const modal = new bootstrap.Modal(document.getElementById("viewPdfModal"));
     modal.show();
 
-    // revoke object URL when modal hidden
-    modalEl.addEventListener(
-      "hidden.bs.modal",
-      () => {
-        if (currentPdfUrl) {
-          URL.revokeObjectURL(currentPdfUrl);
-          currentPdfUrl = null;
-        }
-        iframe.src = "";
-      },
-      { once: true }
-    );
+    // تنظيف الذاكرة عند الإغلاق
+    document
+      .getElementById("viewPdfModal")
+      .addEventListener(
+        "hidden.bs.modal",
+        () => {
+          if (currentPdfUrl) {
+            URL.revokeObjectURL(currentPdfUrl);
+            currentPdfUrl = null;
+          }
+          iframe.src = "";
+        },
+        { once: true }
+      );
   } catch (error) {
     console.error("Error viewing summary:", error);
-    alert(error.message || "Failed to load summary file");
+    alert("Failed to load summary file.");
   }
 }
 

@@ -40,20 +40,20 @@ async function login(email, password) {
   }
 }
 
-// Summaries API
+// ==================== Summaries API ====================
 async function getAllSummaries() {
   try {
     const response = await fetch(`${API_BASE_URL}/summaries`);
-    console.log('getAllSummaries - status:', response.status);
-    const text = await response.text();
-    console.log('getAllSummaries - body (first 1000 chars):', text.slice(0, 1000));
-    if (!response.ok) throw new Error(`Failed to fetch summaries: ${response.status} ${text}`);
-    try {
-      return JSON.parse(text);
-    } catch (e) {
-      console.warn('getAllSummaries: response not valid JSON, returning empty array');
-      return [];
+    console.log("getAllSummaries - status:", response.status);
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch summaries: ${response.status}`);
     }
+
+    const data = await response.json();
+
+    console.log(`getAllSummaries - received ${data.length} summaries`);
+    return data;
   } catch (error) {
     console.error("Error fetching summaries:", error);
     return [];
@@ -62,7 +62,7 @@ async function getAllSummaries() {
 
 async function getSummaryById(id) {
   try {
-    const response = await fetch(`${API_BASE_URL}/summaries/${id}`);
+    const response = await fetch(`${API_BASE_URL}/Summary/${id}`);
     if (!response.ok) throw new Error("Failed to fetch summary");
     return await response.json();
   } catch (error) {
