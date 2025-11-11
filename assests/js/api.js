@@ -1,7 +1,6 @@
-const API_BASE_URL = "http://diaaapi.runasp.net/api";
+const API_BASE_URL = "https://diaaapi.runasp.net/api";
 let authToken = localStorage.getItem("authToken");
 
-// Set the token in the window.api object
 window.api = window.api || {};
 window.api.authToken = authToken;
 
