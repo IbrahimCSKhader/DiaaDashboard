@@ -14,7 +14,7 @@ async function login(email, password) {
     console.log("Attempting login with:", { email, password });
 
     const response = await fetch(
-      `https://diaaapi.runasp.net/api/Authentication/login`,
+      `http://diaaapi.runasp.net/api/Authentication/login`,
       {
         method: "POST",
         headers: {
