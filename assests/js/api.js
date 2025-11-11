@@ -13,16 +13,13 @@ async function login(email, password) {
   try {
     console.log("Attempting login with:", { email, password });
 
-    const response = await fetch(
-      `http://diaaapi.runasp.net/api/Authentication/login`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      }
-    );
+    const response = await fetch(`${API_BASE_URL}/Authentication/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email, password }),
+    });
 
     console.log("Response status:", response.status);
     const responseText = await response.text();
