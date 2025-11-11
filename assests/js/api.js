@@ -1,10 +1,14 @@
-const API_BASE_URL = "https://diaaapi.runasp.net/api";
-let authToken = localStorage.getItem("authToken");
+// ==================== API BASE ====================
+const API_BASE_URL = "http://diaaapi.runasp.net/api";
 
+// ✅ أولاً: تعريف التوكن بشكل صحيح قبل أي استخدام
+let authToken = localStorage.getItem("authToken") || null;
+
+// ✅ ثم تهيئة window.api بعد تعريف المتغير
 window.api = window.api || {};
 window.api.authToken = authToken;
 
-// Authentication
+// ==================== Authentication ====================
 async function login(email, password) {
   try {
     console.log("Attempting login with:", { email, password });
@@ -50,7 +54,6 @@ async function getAllSummaries() {
     }
 
     const data = await response.json();
-
     console.log(`getAllSummaries - received ${data.length} summaries`);
     return data;
   } catch (error) {
@@ -77,7 +80,7 @@ async function uploadSummaryFile(name, specializationId, file) {
     formData.append("specializationId", specializationId);
     formData.append("file", file);
 
-    // Prepare headers conditionally (don't set Content-Type for FormData)
+    // ✅ تحضير الهيدر بشكل صحيح
     const headers = {};
     if (authToken) headers["Authorization"] = `Bearer ${authToken}`;
 
@@ -89,7 +92,6 @@ async function uploadSummaryFile(name, specializationId, file) {
 
     console.log("uploadSummaryFile - status:", response.status);
     const contentType = response.headers.get("content-type") || "";
-    // read body as text first to avoid parse errors when content isn't JSON
     const bodyText = await response.text();
     console.log("uploadSummaryFile - response content-type:", contentType);
     console.log(
@@ -98,7 +100,6 @@ async function uploadSummaryFile(name, specializationId, file) {
     );
 
     if (!response.ok) {
-      // try to surface a helpful message
       if (contentType.includes("application/json")) {
         try {
           const parsed = JSON.parse(bodyText);
@@ -118,7 +119,6 @@ async function uploadSummaryFile(name, specializationId, file) {
       );
     }
 
-    // If server returned JSON, parse and return it; otherwise return text
     if (contentType.includes("application/json")) {
       try {
         return JSON.parse(bodyText);
@@ -154,7 +154,7 @@ async function deleteSummary(id) {
   }
 }
 
-// Specializations API
+// ==================== Specializations API ====================
 async function getAllSpecializations() {
   try {
     const response = await fetch(`${API_BASE_URL}/Summary/specializations`);
@@ -201,7 +201,7 @@ async function addSpecialization(specialization) {
   }
 }
 
-// Export functions
+// ==================== Exports ====================
 Object.assign(window.api, {
   login,
   getAllSummaries,
