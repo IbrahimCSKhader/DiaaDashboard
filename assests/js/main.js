@@ -2,13 +2,10 @@
 const loginForm = document.getElementById("loginForm");
 const dashboard = document.getElementById("dashboard");
 const summariesSection = document.getElementById("summariesSection");
-const specializationsSection = document.getElementById(
-  "specializationsSection"
-);
+const specializationsSection = document.getElementById("specializationsSection");
 const summariesTable = document.getElementById("summariesTable");
 const specializationsTable = document.getElementById("specializationsTable");
 
-// Check for existing auth token
 document.addEventListener("DOMContentLoaded", () => {
   const token = localStorage.getItem("authToken");
   if (token) {

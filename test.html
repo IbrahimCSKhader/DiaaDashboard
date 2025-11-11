@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Preview</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #000;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: none;
+    }
+    .message {
+      position: absolute;
+      top: 40%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-size: 18px;
+    }
+    a.download-link {
+      display: inline-block;
+      margin-top: 10px;
+      color: #00ffff;
+      text-decoration: none;
+      border: 1px solid #00ffff;
+      padding: 8px 16px;
+      border-radius: 6px;
+    }
+    a.download-link:hover {
+      background: #00ffff;
+      color: black;
+    }
+  </style>
+</head>
+<body>
+  <h2>Helllllllllllllllllllllo</h2>
+  <iframe id="viewer"></iframe>
+  <div id="msg" class="message">⏳ Loading file...</div>
+
+  <script>
+    const apiUrl = "http://diaaapi.runasp.net/api/summaries/1";
+    const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJodHRwOi8vc2NoZW1hcy54bWxzb2FwLm9yZy93cy8yMDA1LzA1L2lkZW50aXR5L2NsYWltcy9uYW1lIjoiZGlhYTEyMzQ1NiIsImh0dHA6Ly9zY2hlbWFzLnhtbHNvYXAub3JnL3dzLzIwMDUvMDUvaWRlbnRpdHkvY2xhaW1zL25hbWVpZGVudGlmaWVyIjoiYWZhNjVlNTktZWZkYy00N2U5LTgyZjUtM2ViNmNiN2Q4ODQyIiwianRpIjoiZjkzNmM2ZTAtYjQ3Yy00MDA4LWIzNmItYWM4NDA5ZDhiYzhjIiwiZXhwIjoxNzc1OTE5ODAwLCJpc3MiOiJTZWN1cmVBcGkiLCJhdWQiOiJTZWN1cmVBcGlVc2VyIn0.bv1WlAYapiMEoihksUQSAyUUKY6ExY8sqBlIpzU0iRw"; // ⚠️ ضع توكن JWT هنا
+
+    console.log("🚀 Starting file preview process...");
+    console.log("📡 Fetching from:", apiUrl);
+
+    fetch(apiUrl, {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Accept": "application/json"
+      }
+    })
+    .then(res => {
+      console.log("📥 API Response:", res);
+      if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
+      return res.json();
+    })
+    .then(data => {
+      console.log("✅ Data from API:", data);
+
+      if (!data || !data.fileContent) {
+        document.getElementById("msg").textContent = "❌ No file data received.";
+        console.error("❌ API returned empty data.");
+        return;
+      }
+
+      const fileName = data.fileName || "unknown";
+      const mime = detectMimeType(fileName);
+      console.log("📂 File Name:", fileName);
+      console.log("🧩 Detected MIME:", mime);
+      console.log("📦 Base64 size:", data.fileContent.length);
+
+      // تحويل base64 إلى blob
+      const blob = base64ToBlob(data.fileContent, mime);
+      console.log("✅ Blob created:", blob);
+
+      // تحديد إمكانية العرض داخل iframe
+      const canPreview = ['application/pdf', 'image/png', 'image/jpeg', 'text/plain'].includes(mime);
+      const url = URL.createObjectURL(blob);
+
+      if (canPreview) {
+        console.log("🎬 Preview supported file type:", mime);
+        const frame = document.getElementById("viewer");
+        frame.src = url;
+        frame.style.display = "block";
+        document.getElementById("msg").style.display = "none";
+      } else {
+        console.warn("⚠️ File type not viewable:", mime);
+        document.getElementById("msg").innerHTML = `
+          ⚠️ Cannot preview this file type (${mime}) <br>
+          <a href="${url}" download="${fileName}" class="download-link">⬇️ Download ${fileName}</a>
+        `;
+      }
+    })
+    .catch(err => {
+      console.error("💥 Error:", err);
+      document.getElementById("msg").textContent = "❌ Failed to load file.";
+    });
+
+    // 🧩 دالة لتحويل base64 إلى Blob
+    function base64ToBlob(base64, mime) {
+      try {
+        const byteChars = atob(base64);
+        const byteNumbers = new Array(byteChars.length);
+        for (let i = 0; i < byteChars.length; i++) {
+          byteNumbers[i] = byteChars.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        return new Blob([byteArray], { type: mime });
+      } catch (e) {
+        console.error("❌ Error decoding Base64:", e);
+        return new Blob([], { type: mime });
+      }
+    }
+
+    // 🧩 دالة لتحديد نوع الملف من الاسم
+    function detectMimeType(fileName) {
+      if (!fileName || !fileName.includes('.')) {
+        console.warn("⚠️ File name missing extension, assuming PDF.");
+        return "application/pdf";
+      }
+      const ext = fileName.split('.').pop().toLowerCase();
+      switch (ext) {
+        case 'pdf': return 'application/pdf';
+        case 'jpg':
+        case 'jpeg': return 'image/jpeg';
+        case 'png': return 'image/png';
+        case 'txt': return 'text/plain';
+        case 'doc':
+        case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        case 'xls':
+        case 'xlsx': return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        default:
+          console.warn("❓ Unknown extension:", ext);
+          return 'application/octet-stream';
+      }
+    }
+  </script>
+</body>
+</html>
